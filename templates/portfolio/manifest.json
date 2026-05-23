@@ -1,0 +1,9 @@
+{
+  "archetype": "portfolio",
+  "image_slots": {
+    "hero":      { "query_template": "{industry} work showcase",     "orientation": "landscape" },
+    "feature_1": { "query_template": "{industry} project minimal",   "orientation": "squarish"  },
+    "feature_2": { "query_template": "{industry} detail texture",    "orientation": "squarish"  },
+    "feature_3": { "query_template": "{industry} workspace",         "orientation": "squarish"  }
+  }
+}
