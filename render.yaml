@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: sitesnap-backend
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: UNSPLASH_ACCESS_KEY
+        sync: false
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        value: sitesnap-sites
+      - key: R2_PUBLIC_BASE
+        value: https://sitesnap.app
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        value: hello@sitesnap.app
+      - key: RESEND_OPERATOR_EMAIL
+        value: devops@branchlead.com
+      - key: ADMIN_BEARER_TOKEN
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ENV
+        value: production
