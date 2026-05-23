@@ -1,0 +1,9 @@
+{
+  "archetype": "service",
+  "image_slots": {
+    "hero":      { "query_template": "{industry} professional",       "orientation": "landscape" },
+    "feature_1": { "query_template": "{industry} workspace minimal",  "orientation": "squarish"  },
+    "feature_2": { "query_template": "{industry} team meeting calm",  "orientation": "squarish"  },
+    "feature_3": { "query_template": "{industry} customer happy",     "orientation": "squarish"  }
+  }
+}
