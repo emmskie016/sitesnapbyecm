@@ -15,10 +15,14 @@ ASSET_CACHE = "public, max-age=31536000, immutable"
 
 
 def _site_url(slug: str) -> str:
-    # Subdomain style: <slug>.<base host>
     parsed = urlparse(settings.r2_public_base)
     host = parsed.netloc or parsed.path  # tolerate URLs without scheme
     scheme = parsed.scheme or "https"
+    # R2's Public Development URL (pub-<hash>.r2.dev) is a flat object host
+    # with no wildcard subdomain. Use path-style for r2.dev; subdomain-style
+    # for custom domains (where a Cloudflare Worker handles the routing).
+    if host.endswith(".r2.dev"):
+        return f"{scheme}://{host}/sites/{slug}/index.html"
     return f"{scheme}://{slug}.{host}"
 
 
