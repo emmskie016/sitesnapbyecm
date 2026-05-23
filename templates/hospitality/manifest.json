@@ -1,0 +1,9 @@
+{
+  "archetype": "hospitality",
+  "image_slots": {
+    "hero":      { "query_template": "{industry} food atmospheric",  "orientation": "landscape" },
+    "feature_1": { "query_template": "{industry} ingredient close",  "orientation": "squarish"  },
+    "feature_2": { "query_template": "{industry} interior warm",     "orientation": "squarish"  },
+    "feature_3": { "query_template": "{industry} dish overhead",     "orientation": "squarish"  }
+  }
+}

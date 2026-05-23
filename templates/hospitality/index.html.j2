@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ copy.meta.title }}</title>
+<meta name="description" content="{{ copy.meta.description }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: {{ palette.primary }};
+    --accent: {{ palette.accent }};
+    --bg: {{ palette.neutral_bg }};
+    --surface: {{ palette.neutral_surface }};
+    --ink: {{ palette.ink }};
+    --ink-soft: {{ palette.ink_soft }};
+    --display: 'Playfair Display', Georgia, serif;
+    --body: 'Inter', system-ui, sans-serif;
+  }
+  *,*::before,*::after { box-sizing: border-box; }
+  html,body { margin: 0; padding: 0; }
+  body { font-family: var(--body); background: var(--bg); color: var(--ink); line-height: 1.55; }
+  a { color: var(--primary); text-decoration: none; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  .hero { position: relative; min-height: 88vh; display: grid; place-items: center; color: #fff; text-align: center; overflow: hidden; border-radius: 0 0 32px 32px; }
+  .hero::before { content: ''; position: absolute; inset: 0; background-image: url('{{ images.hero.local }}'); background-size: cover; background-position: center; z-index: 0; }
+  .hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--ink) 35%, transparent) 0%, color-mix(in srgb, var(--ink) 70%, transparent) 100%); z-index: 1; }
+  .hero-inner { position: relative; z-index: 2; padding: 96px 24px; max-width: 760px; }
+  .hero h1 { font-family: var(--display); font-size: clamp(44px, 7vw, 76px); line-height: 1.05; margin: 0 0 20px; font-weight: 700; }
+  .hero p.lede { font-size: 19px; opacity: .9; margin: 0 0 32px; }
+  .btn { display: inline-block; padding: 16px 28px; border-radius: 999px; font-weight: 600; transition: transform .15s; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary { background: var(--accent); color: var(--ink); }
+  .btn-ghost-light { color: #fff; border: 1px solid rgba(255,255,255,.5); }
+  .nav { position: absolute; top: 0; left: 0; right: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: 24px 32px; }
+  .brand { font-family: var(--display); font-size: 22px; font-weight: 700; color: #fff; }
+  section.story { padding: 96px 0; text-align: center; }
+  h2 { font-family: var(--display); font-size: clamp(32px, 5vw, 52px); margin: 0 0 16px; }
+  .story p.lede { color: var(--ink-soft); max-width: 38em; margin: 0 auto 56px; font-size: 18px; }
+  .gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .gallery figure { margin: 0; aspect-ratio: 1/1; overflow: hidden; border-radius: 16px; }
+  .gallery img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s; }
+  .gallery figure:hover img { transform: scale(1.04); }
+  .feature-strip { background: var(--primary); color: var(--surface); padding: 64px 0; }
+  .feature-strip .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .feature { padding: 0 8px; }
+  .feature h3 { font-family: var(--display); font-size: 22px; margin: 0 0 8px; }
+  .feature p { margin: 0; opacity: .85; font-size: 15px; }
+  .quotes { padding: 96px 0; text-align: center; }
+  .quotes blockquote { font-family: var(--display); font-size: clamp(22px, 3vw, 32px); line-height: 1.35; margin: 0 auto 16px; max-width: 32em; font-style: italic; }
+  .quotes cite { color: var(--ink-soft); font-style: normal; }
+  .cta { padding: 96px 0; text-align: center; background: var(--ink); color: var(--surface); }
+  .cta h2 { color: var(--surface); }
+  footer { padding: 48px 0; text-align: center; color: var(--ink-soft); font-size: 14px; }
+  footer .attribution { margin-top: 12px; font-size: 12px; opacity: .7; }
+  footer .attribution a { color: var(--ink-soft); }
+  @media (max-width: 800px) {
+    .gallery, .feature-strip .features { grid-template-columns: 1fr; }
+    .nav { padding: 18px 20px; }
+  }
+</style>
+</head>
+<body>
+<header class="hero">
+  <nav class="nav">
+    <div class="brand">{{ brand.name }}</div>
+    <a class="btn btn-ghost-light" href="#visit">{{ copy.secondary_cta }}</a>
+  </nav>
+  <div class="hero-inner">
+    <h1>{{ copy.headline }}</h1>
+    <p class="lede">{{ copy.subheadline }}</p>
+    <a class="btn btn-primary" href="#visit">{{ copy.primary_cta }}</a>
+  </div>
+</header>
+
+<section class="story">
+  <div class="wrap">
+    <h2>{{ copy.about.heading }}</h2>
+    <p class="lede">{{ copy.about.body }}</p>
+    <div class="gallery">
+      <figure><img src="{{ images.feature_1.local }}" alt=""></figure>
+      <figure><img src="{{ images.feature_2.local }}" alt=""></figure>
+      <figure><img src="{{ images.feature_3.local }}" alt=""></figure>
+    </div>
+  </div>
+</section>
+
+<section class="feature-strip">
+  <div class="wrap">
+    <div class="features">
+      {% for f in copy.features %}
+      <div class="feature"><h3>{{ f.title }}</h3><p>{{ f.body }}</p></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if copy.social_proof %}
+<section class="quotes">
+  <div class="wrap">
+    <blockquote>&ldquo;{{ copy.social_proof[0].text }}&rdquo;</blockquote>
+    <cite>— {{ copy.social_proof[0].author }}</cite>
+  </div>
+</section>
+{% endif %}
+
+<section id="visit" class="cta">
+  <div class="wrap">
+    <h2>{{ copy.footer_tagline }}</h2>
+    <p style="opacity:.85; margin-bottom:32px;">{{ copy.about.heading }}</p>
+    <a class="btn btn-primary" href="mailto:hello@{{ brand.slug }}.sitesnap.app">{{ copy.primary_cta }}</a>
+  </div>
+</section>
+
+<footer>
+  <div>&copy; {{ now.year }} {{ brand.name }}</div>
+  <div class="attribution">{{ images.hero.attribution | safe }}</div>
+</footer>
+</body>
+</html>
