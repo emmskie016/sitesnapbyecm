@@ -170,5 +170,44 @@ class DB:
             cost_usd,
         )
 
+    async def fetch_cached_photo(self, query: str) -> dict[str, Any] | None:
+        assert self.pool is not None
+        row = await self.pool.fetchrow(
+            "select photo_id, urls, attribution_html, page_url, fetched_at"
+            " from unsplash_cache where query = $1",
+            query,
+        )
+        if not row:
+            return None
+        return {
+            "photo_id": row["photo_id"],
+            "urls": json.loads(row["urls"]) if isinstance(row["urls"], str) else row["urls"],
+            "attribution_html": row["attribution_html"],
+            "page_url": row["page_url"],
+            "fetched_at": row["fetched_at"],
+        }
+
+    async def store_cached_photo(
+        self, *, query: str, photo_id: str, urls: dict, attribution_html: str, page_url: str
+    ) -> None:
+        assert self.pool is not None
+        await self.pool.execute(
+            """
+            insert into unsplash_cache (query, photo_id, urls, attribution_html, page_url)
+            values ($1, $2, $3::jsonb, $4, $5)
+            on conflict (query) do update set
+              photo_id = excluded.photo_id,
+              urls = excluded.urls,
+              attribution_html = excluded.attribution_html,
+              page_url = excluded.page_url,
+              fetched_at = now()
+            """,
+            query,
+            photo_id,
+            json.dumps(urls),
+            attribution_html,
+            page_url,
+        )
+
 
 db = DB()
