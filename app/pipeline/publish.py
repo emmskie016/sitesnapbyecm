@@ -23,7 +23,7 @@ def _site_url(slug: str) -> str:
 
 
 async def _download(http: httpx.AsyncClient, url: str) -> bytes:
-    resp = await http.get(url, timeout=20.0)
+    resp = await http.get(url, timeout=20.0, follow_redirects=True)
     resp.raise_for_status()
     return resp.content
 
