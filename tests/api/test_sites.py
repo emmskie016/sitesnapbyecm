@@ -7,16 +7,28 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture
 def client(monkeypatch):
+    # Mock the orchestrator BEFORE importing create_app.
+    fake_generate_site = AsyncMock()
+    monkeypatch.setattr("app.pipeline.orchestrator.generate_site", fake_generate_site)
+
     from app.main import create_app
 
+    sub_id = uuid4()
+    job_id = uuid4()
+
     fake_db = AsyncMock()
-    fake_db.insert_submission = AsyncMock(return_value=uuid4())
-    fake_db.insert_job = AsyncMock(return_value=uuid4())
-    fake_db.fetch_job = AsyncMock(return_value={
-        "id": "00000000-0000-0000-0000-000000000000",
-        "status": "writing_copy", "progress_pct": 30,
-        "site_url": None, "error_code": None, "error_message": None,
-    })
+    fake_db.insert_submission = AsyncMock(return_value=sub_id)
+    fake_db.insert_job = AsyncMock(return_value=job_id)
+    fake_db.fetch_job = AsyncMock(
+        return_value={
+            "id": "00000000-0000-0000-0000-000000000000",
+            "status": "writing_copy",
+            "progress_pct": 30,
+            "site_url": None,
+            "error_code": None,
+            "error_message": None,
+        }
+    )
 
     monkeypatch.setattr("app.api.sites.db", fake_db)
     app = create_app()
@@ -26,8 +38,10 @@ def client(monkeypatch):
 def test_post_sites_returns_202_and_status_url(client):
     c, _ = client
     payload = {
-        "full_name": "Jane Doe", "email": "jane@example.com",
-        "brand_name": "Bloom", "industry": "florist",
+        "full_name": "Jane Doe",
+        "email": "jane@example.com",
+        "brand_name": "Bloom",
+        "industry": "florist",
         "questionnaire": {"tone": "warm"},
     }
     r = c.post("/api/sites", json=payload)
@@ -39,9 +53,15 @@ def test_post_sites_returns_202_and_status_url(client):
 
 def test_post_sites_rejects_bad_email(client):
     c, _ = client
-    r = c.post("/api/sites", json={
-        "full_name": "x", "email": "nope", "brand_name": "x", "industry": "x",
-    })
+    r = c.post(
+        "/api/sites",
+        json={
+            "full_name": "x",
+            "email": "nope",
+            "brand_name": "x",
+            "industry": "x",
+        },
+    )
     assert r.status_code == 422
 
 

@@ -6,7 +6,7 @@ from pathlib import Path
 from loguru import logger
 from pydantic import ValidationError
 
-from app.integrations.anthropic_client import ClaudeClient, MODEL_PRIMARY
+from app.integrations.anthropic_client import MODEL_PRIMARY, ClaudeClient
 from app.models import ClassifyOutput
 
 PROMPT_PATH = Path(__file__).parent.parent.parent / "prompts" / "system_classifier.md"

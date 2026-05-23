@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 def test_healthz_returns_ok_status_and_dependency_map():
     from app.main import create_app
+
     c = TestClient(create_app())
     r = c.get("/healthz")
     assert r.status_code == 200

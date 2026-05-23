@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.integrations.unsplash_client import UnsplashPhoto
 from app.models import CopyOutput
@@ -57,7 +57,7 @@ def test_render_service_produces_html_with_palette_and_copy():
         slug="bloom-x7k2",
         copy=COPY,
         images=IMAGES,
-        now=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        now=datetime(2026, 1, 1, tzinfo=UTC),
     )
     assert isinstance(out, RenderedSite)
     assert "Stems and seasons" in out.html
@@ -74,6 +74,6 @@ def test_render_hospitality_works():
         slug="loaf-abcd",
         copy=COPY,
         images=IMAGES,
-        now=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        now=datetime(2026, 1, 1, tzinfo=UTC),
     )
     assert "Stems and seasons" in out.html

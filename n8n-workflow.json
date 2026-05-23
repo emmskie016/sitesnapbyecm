@@ -1,0 +1,310 @@
+{
+  "name": "SiteSnap — Website Generator",
+  "nodes": [
+
+    {
+      "id": "node-webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sitesnap-generate",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "sitesnap-webhook-auth",
+          "name": "SiteSnap Webhook Key"
+        }
+      }
+    },
+
+    {
+      "id": "node-validate-input",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "const body = $json.body || {};\n\nconst required = ['email', 'businessName', 'websiteType'];\nfor (const field of required) {\n  const val = body[field];\n  if (!val || String(val).trim() === '') {\n    throw new Error('Missing required field: ' + field);\n  }\n}\n\nconst clean = (v) => (v !== undefined && v !== null ? String(v).trim() : '');\n\nconst formData = {\n  fullName:         clean(body.fullName),\n  email:            clean(body.email).toLowerCase(),\n  businessName:     clean(body.businessName),\n  industry:         clean(body.industry),\n  websiteType:      clean(body.websiteType),\n  pagesNeeded:      Array.isArray(body.pagesNeeded)\n                      ? body.pagesNeeded\n                      : [body.pagesNeeded].filter(Boolean),\n  designStyle:      clean(body.designStyle),\n  colorPreferences: clean(body.colorPreferences),\n  tone:             clean(body.tone),\n  tagline:          clean(body.tagline),\n  services:         clean(body.services),\n  about:            clean(body.about),\n  socialLinks:      clean(body.socialLinks),\n  exampleSites:     clean(body.exampleSites),\n  anythingElse:     clean(body.anythingElse),\n  planSelected:     clean(body.planSelected),\n};\n\nconst requestId = 'sr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);\n\nreturn [{ json: { formData, requestId } }];"
+      }
+    },
+
+    {
+      "id": "node-create-airtable",
+      "name": "Create Airtable Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.airtable.com/v0/{{ $env.AIRTABLE_BASE_ID }}/Website%20Requests",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.AIRTABLE_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ fields: { 'Full Name': $('Validate Input').first().json.formData.fullName, 'Email Address': $('Validate Input').first().json.formData.email, 'Business / Brand Name': $('Validate Input').first().json.formData.businessName, 'Industry / Niche': $('Validate Input').first().json.formData.industry, 'Website Type': $('Validate Input').first().json.formData.websiteType, 'Pages / Sections Needed': $('Validate Input').first().json.formData.pagesNeeded, 'Design Style': $('Validate Input').first().json.formData.designStyle, 'Color Preferences': $('Validate Input').first().json.formData.colorPreferences, 'Tone / Voice': $('Validate Input').first().json.formData.tone, 'Tagline or Headline': $('Validate Input').first().json.formData.tagline, 'Services or Offerings': $('Validate Input').first().json.formData.services, 'About / Bio': $('Validate Input').first().json.formData.about, 'Social Media Links': $('Validate Input').first().json.formData.socialLinks, 'Example Sites They Like': $('Validate Input').first().json.formData.exampleSites, 'Anything Else': $('Validate Input').first().json.formData.anythingElse, 'Plan Selected': $('Validate Input').first().json.formData.planSelected, 'Status': 'Generating' } }) }}",
+        "options": {
+          "retry": { "enabled": true, "maxTries": 3, "waitBetweenTries": 5000 }
+        }
+      }
+    },
+
+    {
+      "id": "node-build-prompt",
+      "name": "Build Claude Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "parameters": {
+        "jsCode": "const formData  = $('Validate Input').first().json.formData;\nconst requestId = $('Validate Input').first().json.requestId;\nconst recordId  = $('Create Airtable Record').first().json.id;\n\nconst systemPrompt = `You are an expert web designer and developer. Your job is to generate a complete, beautiful, fully functional website based on the details provided. You produce real, production-quality websites — not templates, not placeholders.\n\nOUTPUT FORMAT:\nDecide the best format based on complexity:\n- Simple sites (landing pages): return a single self-contained HTML file with all CSS and JS embedded inline.\n- Multi-page or complex sites: return separate files, clearly labeled with headers like <!-- FILE: index.html -->, <!-- FILE: style.css -->, <!-- FILE: script.js -->.\n\nAlways state at the top which format you chose and why, in one sentence.\n\nDESIGN RULES:\n1. Match the user's design style and tone exactly.\n2. Use the brand colors provided. If none given, choose a palette that fits the industry.\n3. Choose Google Fonts that match the tone.\n4. Mobile responsive by default using CSS Flexbox or Grid. Include hamburger menu on mobile.\n5. No placeholder content. Use the actual details provided. Make professional assumptions for anything missing.\n6. Strong hero section with headline, subheadline, and clear CTA button on every site.\n7. Subtle CSS animations, hover effects, and smooth scrolling.\n8. Semantic HTML5. Clean, commented code.\n\nWEBSITE TYPES:\n- Business: Hero, About, Services, Testimonials, Contact form, Footer\n- Portfolio: Hero, About/Bio, Work/Projects, Skills, Contact\n- Landing page: Hero + CTA, Problem/Solution, Features, Social proof, Final CTA, Footer\n\nCONTACT FORM: Use a mailto action with the client's email address.\n\nOUTPUT STRUCTURE:\nFORMAT CHOSEN: [Single file / Multi-file] — [one sentence reason]\n---\n<!-- FILE: index.html -->\n[full code]\n<!-- FILE: style.css --> (if multi-file)\n[full code]\n<!-- FILE: script.js --> (if multi-file)\n[full code]\n\nDo not add explanations after the code. Generate the complete site in one response.`;\n\nconst pages = Array.isArray(formData.pagesNeeded)\n  ? formData.pagesNeeded.join(', ')\n  : formData.pagesNeeded;\n\nconst lines = [\n  'Business/Personal Name: ' + formData.businessName,\n  'Website Type: '           + formData.websiteType,\n  'Industry/Niche: '         + (formData.industry         || 'Not specified'),\n  'Pages/Sections Needed: '  + (pages                    || 'Not specified'),\n  'Design Style: '           + (formData.designStyle      || 'Not specified'),\n  'Color Preferences: '      + (formData.colorPreferences || 'Not specified'),\n  'Tone/Voice: '             + (formData.tone             || 'Not specified'),\n  'Tagline or Headline: '    + (formData.tagline          || 'Not specified'),\n  'Services or Offerings: '  + (formData.services         || 'Not specified'),\n  'About/Bio: '              + (formData.about            || 'Not specified'),\n  'Contact Email: '          + formData.email,\n  'Social Media Links: '     + (formData.socialLinks      || 'Not specified'),\n  'Example Sites They Like: '+ (formData.exampleSites     || 'Not specified'),\n  'Anything Else: '          + (formData.anythingElse     || 'Not specified'),\n];\n\nconst userMessage = lines.join('\\n');\n\nreturn [{ json: { systemPrompt, userMessage, formData, recordId, requestId } }];"
+      }
+    },
+
+    {
+      "id": "node-call-claude",
+      "name": "Call Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key",        "value": "={{ $env.ANTHROPIC_API_KEY }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "anthropic-beta",    "value": "prompt-caching-2024-07-31" },
+            { "name": "content-type",      "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: 'claude-opus-4-6', max_tokens: 8000, system: [{ type: 'text', text: $('Build Claude Prompt').first().json.systemPrompt, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content: $('Build Claude Prompt').first().json.userMessage }] }) }}",
+        "options": {
+          "retry":   { "enabled": true, "maxTries": 3, "waitBetweenTries": 5000 },
+          "timeout": 120000
+        }
+      }
+    },
+
+    {
+      "id": "node-parse-output",
+      "name": "Parse Claude Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300],
+      "parameters": {
+        "jsCode": "const rawOutput = $('Call Claude API').first().json.content[0].text;\nconst formData  = $('Validate Input').first().json.formData;\nconst recordId  = $('Build Claude Prompt').first().json.recordId;\nconst requestId = $('Validate Input').first().json.requestId;\n\nconst files = {};\n\n// Use matchAll to find all <!-- FILE: name --> blocks\nconst fileMarkerRe = /<!--\\s*FILE:\\s*(\\S+)\\s*-->([\\s\\S]*?)(?=<!--\\s*FILE:|$)/g;\nfor (const m of rawOutput.matchAll(fileMarkerRe)) {\n  const filename = m[1].trim();\n  const content  = m[2].trim();\n  if (content.length > 0) {\n    files[filename] = content;\n  }\n}\n\n// Fallback: raw HTML document with no FILE markers\nif (Object.keys(files).length === 0) {\n  const doctypeMatch = rawOutput.match(/<!DOCTYPE\\s+html[\\s\\S]*/i);\n  const htmlTagMatch = rawOutput.match(/<html[\\s\\S]*/i);\n  const htmlContent  = doctypeMatch || htmlTagMatch;\n  if (htmlContent) {\n    files['index.html'] = htmlContent[0].trim();\n  }\n}\n\nif (Object.keys(files).length === 0) {\n  throw new Error('Could not extract any files from Claude output. Check the raw Claude response in the previous node.');\n}\n\nreturn [{ json: { files, formData, recordId, requestId } }];"
+      }
+    },
+
+    {
+      "id": "node-deploy-cf",
+      "name": "Deploy to Cloudflare Pages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300],
+      "parameters": {
+        "jsCode": "const { files, formData, recordId, requestId } = $input.item.json;\n\nconst cfAccountId   = $env.CF_ACCOUNT_ID;\nconst cfApiToken    = $env.CF_API_TOKEN;\nconst cfProjectName = $env.CF_PROJECT_NAME;\n\nif (!cfAccountId || !cfApiToken || !cfProjectName) {\n  throw new Error('Missing Cloudflare env vars: CF_ACCOUNT_ID, CF_API_TOKEN, CF_PROJECT_NAME');\n}\n\nconst boundary = '----SiteSnapBoundary' + Date.now() + Math.random().toString(36).slice(2);\nconst CRLF     = '\\r\\n';\nconst parts    = [];\n\nconst mimeType = (filename) => {\n  if (filename.endsWith('.css'))  return 'text/css; charset=utf-8';\n  if (filename.endsWith('.js'))   return 'application/javascript; charset=utf-8';\n  if (filename.endsWith('.json')) return 'application/json';\n  return 'text/html; charset=utf-8';\n};\n\nfor (const [filename, content] of Object.entries(files)) {\n  parts.push(\n    '--' + boundary + CRLF +\n    'Content-Disposition: form-data; name=\"' + filename + '\"; filename=\"' + filename + '\"' + CRLF +\n    'Content-Type: ' + mimeType(filename) + CRLF +\n    CRLF +\n    content +\n    CRLF\n  );\n}\nparts.push('--' + boundary + '--' + CRLF);\n\nconst response = await fetch(\n  'https://api.cloudflare.com/client/v4/accounts/' + cfAccountId + '/pages/projects/' + cfProjectName + '/deployments',\n  {\n    method:  'POST',\n    headers: {\n      'Authorization': 'Bearer ' + cfApiToken,\n      'Content-Type':  'multipart/form-data; boundary=' + boundary,\n    },\n    body: parts.join(''),\n  }\n);\n\nconst data = await response.json();\n\nif (!response.ok || !data.success) {\n  throw new Error('Cloudflare deployment failed (' + response.status + '): ' + JSON.stringify(data.errors || data));\n}\n\nconst deploymentId  = data.result.id;\nconst deploymentUrl = data.result.url || ('https://' + deploymentId + '.' + cfProjectName + '.pages.dev');\n\nreturn [{ json: { deploymentUrl, deploymentId, formData, recordId, requestId } }];"
+      }
+    },
+
+    {
+      "id": "node-update-airtable",
+      "name": "Update Airtable Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 300],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.airtable.com/v0/{{ $env.AIRTABLE_BASE_ID }}/Website%20Requests/{{ $json.recordId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.AIRTABLE_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ fields: { 'Generated Site URL': $json.deploymentUrl, 'Status': 'Live' } }) }}",
+        "options": {
+          "retry": { "enabled": true, "maxTries": 3, "waitBetweenTries": 5000 }
+        }
+      }
+    },
+
+    {
+      "id": "node-send-email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [2000, 300],
+      "parameters": {
+        "resource":   "message",
+        "operation":  "send",
+        "toList": {
+          "toValues": [
+            {
+              "name":    "={{ $('Deploy to Cloudflare Pages').first().json.formData.fullName }}",
+              "address": "={{ $('Deploy to Cloudflare Pages').first().json.formData.email }}"
+            }
+          ]
+        },
+        "subject": "={{ 'Your website is live, ' + $('Deploy to Cloudflare Pages').first().json.formData.fullName + '!' }}",
+        "emailType": "html",
+        "message": "={{ (() => { const d = $('Deploy to Cloudflare Pages').first().json; return `<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"/></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:sans-serif;\"><table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\"><tr><td align=\"center\" style=\"padding:32px 16px;\"><table width=\"600\" cellspacing=\"0\" cellpadding=\"0\" style=\"max-width:600px;\"><tr><td style=\"background:#0D0D0D;border-radius:12px 12px 0 0;padding:36px 40px;\"><p style=\"margin:0;color:#fff;font-size:22px;font-weight:700;\">⚡ SiteSnap</p><h1 style=\"margin:16px 0 0;color:#fff;font-size:30px;font-weight:800;\">Your website is live!</h1><p style=\"margin:12px 0 0;color:#a1a1aa;font-size:16px;\">It took less than 60 seconds. Here's your link:</p></td></tr><tr><td style=\"background:#fff;padding:40px;text-align:center;\"><a href=\"${d.deploymentUrl}\" style=\"display:inline-block;background:#7C3AED;color:#fff;text-decoration:none;font-size:17px;font-weight:700;padding:16px 40px;border-radius:8px;\">View Your Live Website →</a><br/><a href=\"${d.deploymentUrl}\" style=\"color:#7C3AED;font-size:13px;text-decoration:none;display:block;margin-top:12px;\">${d.deploymentUrl}</a></td></tr><tr><td style=\"background:#fff;padding:0 40px 32px;\"><table width=\"100%\" style=\"background:#fafafa;border:1px solid #e4e4e7;border-radius:8px;\"><tr><td style=\"padding:14px 20px;border-bottom:1px solid #e4e4e7;\"><span style=\"color:#71717a;font-size:13px;\">Business</span><span style=\"float:right;color:#18181b;font-size:14px;font-weight:600;\">${d.formData.businessName}</span></td></tr><tr><td style=\"padding:14px 20px;border-bottom:1px solid #e4e4e7;\"><span style=\"color:#71717a;font-size:13px;\">Website Type</span><span style=\"float:right;color:#18181b;font-size:14px;font-weight:600;\">${d.formData.websiteType}</span></td></tr><tr><td style=\"padding:14px 20px;\"><span style=\"color:#71717a;font-size:13px;\">Plan</span><span style=\"float:right;background:#ede9fe;color:#7C3AED;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;\">${d.formData.planSelected}</span></td></tr></table></td></tr><tr><td style=\"background:#0D0D0D;border-radius:0 0 12px 12px;padding:24px 40px;\"><p style=\"margin:0;color:#a1a1aa;font-size:13px;\">Questions? Reply to this email — we're here to help.</p><p style=\"margin:8px 0 0;color:#52525b;font-size:12px;\">© 2025 SiteSnap</p></td></tr></table></td></tr></table></body></html>`; })() }}"
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-oauth2-cred",
+          "name": "Gmail account"
+        }
+      }
+    },
+
+    {
+      "id": "node-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2220, 300],
+      "parameters": {
+        "respondWith": "json",
+        "options": { "responseCode": 200 },
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Your website is being generated. You will receive an email shortly.', requestId: $('Validate Input').first().json.requestId }) }}"
+      }
+    },
+
+    {
+      "id": "node-error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [460, 560],
+      "parameters": {}
+    },
+
+    {
+      "id": "node-update-airtable-failed",
+      "name": "Update Airtable Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 560],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.airtable.com/v0/{{ $env.AIRTABLE_BASE_ID }}/Website%20Requests/{{ $json.execution.data.resultData.runData['Create Airtable Record'] && $json.execution.data.resultData.runData['Create Airtable Record'][0].data.main[0][0].json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.AIRTABLE_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "{ \"fields\": { \"Status\": \"Failed\" } }",
+        "options": {
+          "retry": { "enabled": true, "maxTries": 2, "waitBetweenTries": 3000 }
+        }
+      }
+    },
+
+    {
+      "id": "node-admin-alert",
+      "name": "Send Admin Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [900, 560],
+      "parameters": {
+        "resource":   "message",
+        "operation":  "send",
+        "toList": {
+          "toValues": [
+            {
+              "name":    "SiteSnap Admin",
+              "address": "={{ $env.ADMIN_EMAIL }}"
+            }
+          ]
+        },
+        "subject": "={{ '[SiteSnap] Workflow failed — ' + $json.execution.id }}",
+        "emailType": "html",
+        "message": "={{ '<h2>SiteSnap workflow failed</h2><p><strong>Execution ID:</strong> ' + $json.execution.id + '</p><p><strong>Error:</strong> ' + ($json.execution.data.resultData.error && $json.execution.data.resultData.error.message || 'Unknown error') + '</p><p>Check n8n executions for details.</p>' }}"
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-oauth2-cred",
+          "name": "Gmail account"
+        }
+      }
+    }
+
+  ],
+
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Validate Input", "type": "main", "index": 0 }]]
+    },
+    "Validate Input": {
+      "main": [[{ "node": "Create Airtable Record", "type": "main", "index": 0 }]]
+    },
+    "Create Airtable Record": {
+      "main": [[{ "node": "Build Claude Prompt", "type": "main", "index": 0 }]]
+    },
+    "Build Claude Prompt": {
+      "main": [[{ "node": "Call Claude API", "type": "main", "index": 0 }]]
+    },
+    "Call Claude API": {
+      "main": [[{ "node": "Parse Claude Output", "type": "main", "index": 0 }]]
+    },
+    "Parse Claude Output": {
+      "main": [[{ "node": "Deploy to Cloudflare Pages", "type": "main", "index": 0 }]]
+    },
+    "Deploy to Cloudflare Pages": {
+      "main": [[{ "node": "Update Airtable Record", "type": "main", "index": 0 }]]
+    },
+    "Update Airtable Record": {
+      "main": [[{ "node": "Send Email", "type": "main", "index": 0 }]]
+    },
+    "Send Email": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    },
+    "Error Trigger": {
+      "main": [[{ "node": "Update Airtable Failed", "type": "main", "index": 0 }]]
+    },
+    "Update Airtable Failed": {
+      "main": [[{ "node": "Send Admin Alert", "type": "main", "index": 0 }]]
+    }
+  },
+
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow":  "SiteSnap — Website Generator"
+  },
+  "versionId": "sitesnap-v1-0-0",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": ""
+  },
+  "id": "sitesnap-website-generator",
+  "tags": [
+    { "name": "sitesnap", "createdAt": "2025-01-01T00:00:00.000Z" }
+  ]
+}

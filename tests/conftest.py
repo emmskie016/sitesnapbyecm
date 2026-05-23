@@ -1,4 +1,5 @@
 import os
+
 import pytest
 
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic")

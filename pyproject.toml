@@ -26,7 +26,6 @@ dev = [
   "pytest-asyncio>=0.24",
   "respx>=0.21",
   "ruff>=0.7",
-  "pytest-postgresql>=6.1",
 ]
 
 [tool.ruff]
@@ -35,6 +34,10 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "ASYNC"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501"]
+"app/pipeline/notify.py" = ["E501"]  # HTML email templates have long lines by nature
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

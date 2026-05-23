@@ -1,12 +1,9 @@
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-import pytest
-
 from app.integrations.unsplash_client import UnsplashPhoto
 from app.models import ClassifyOutput, CopyOutput
 from app.pipeline.orchestrator import generate_site
-
 
 VALID_COPY = CopyOutput.model_validate(
     {

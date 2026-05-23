@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 import httpx
@@ -112,7 +112,7 @@ async def generate_site(
             slug=slug,
             copy=copy,
             images=images,
-            now=datetime.now(timezone.utc),
+            now=datetime.now(UTC),
         )
 
         # Stage 5

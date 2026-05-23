@@ -9,7 +9,9 @@ def client(monkeypatch):
     from app.main import create_app
 
     fake_db = AsyncMock()
-    fake_db.fetch_job = AsyncMock(return_value={"id": "abc", "status": "failed", "submission_id": "sub1"})
+    fake_db.fetch_job = AsyncMock(
+        return_value={"id": "abc", "status": "failed", "submission_id": "sub1"}
+    )
     fake_db.update_job_status = AsyncMock()
     monkeypatch.setattr("app.api.admin.db", fake_db)
 

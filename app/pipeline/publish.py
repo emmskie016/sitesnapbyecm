@@ -42,7 +42,7 @@ async def publish_site(
     http: httpx.AsyncClient,
 ) -> str:
     asset_bytes = await asyncio.gather(*[_download(http, url) for url in assets.values()])
-    asset_pairs = dict(zip(assets.keys(), asset_bytes))
+    asset_pairs = dict(zip(assets.keys(), asset_bytes, strict=True))
 
     items: list[tuple[str, bytes, str, str]] = [
         (f"sites/{slug}/index.html", html.encode("utf-8"), "text/html; charset=utf-8", HTML_CACHE),
