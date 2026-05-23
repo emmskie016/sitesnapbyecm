@@ -12,16 +12,16 @@ TEMPLATES_DIR = Path(__file__).parent.parent.parent / "templates"
 
 
 def _fallback_photo(archetype: str, slot: str) -> UnsplashPhoto:
-    # Pre-curated default photos live in the R2 bucket under defaults/<archetype>/<slot>.jpg.
-    # When Unsplash returns nothing we point the template at those.
-    fallback_url = f"https://defaults.sitesnap.app/{archetype}/{slot}.jpg"
+    # Public no-key placeholder service so the pipeline always succeeds.
+    # Seed is deterministic per archetype+slot for consistent imagery.
+    seed = f"{archetype}-{slot}"
     return UnsplashPhoto(
-        photo_id=f"fallback-{archetype}-{slot}",
-        url_raw=fallback_url,
-        url_regular=fallback_url,
-        url_small=fallback_url,
-        attribution_html="",
-        page_url=fallback_url,
+        photo_id=f"fallback-{seed}",
+        url_raw=f"https://picsum.photos/seed/{seed}/1600/900",
+        url_regular=f"https://picsum.photos/seed/{seed}/1600/900",
+        url_small=f"https://picsum.photos/seed/{seed}/400/300",
+        attribution_html='Photo via <a href="https://picsum.photos">picsum.photos</a>',
+        page_url=f"https://picsum.photos/seed/{seed}",
     )
 
 
