@@ -18,12 +18,12 @@ def _site_url(slug: str) -> str:
     parsed = urlparse(settings.r2_public_base)
     host = parsed.netloc or parsed.path  # tolerate URLs without scheme
     scheme = parsed.scheme or "https"
-    # R2's Public Development URL (pub-<hash>.r2.dev) is a flat object host
-    # with no wildcard subdomain. Use path-style for r2.dev; subdomain-style
-    # for custom domains (where a Cloudflare Worker handles the routing).
-    if host.endswith(".r2.dev"):
-        return f"{scheme}://{host}/sites/{slug}/index.html"
-    return f"{scheme}://{slug}.{host}"
+    # Path-style: <base>/sites/<slug>/index.html. Works for R2's Public Dev
+    # URL, an R2 Custom Domain (e.g. sites.emmersonmorales.com), and any
+    # other content-host setup. Subdomain-style (<slug>.<base>) requires a
+    # Cloudflare Worker for wildcard routing; revisit when sitesnap.app +
+    # infra/worker/ are deployed.
+    return f"{scheme}://{host}/sites/{slug}/index.html"
 
 
 async def _download(http: httpx.AsyncClient, url: str) -> bytes:
