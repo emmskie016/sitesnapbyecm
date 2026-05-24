@@ -37,11 +37,23 @@ def create_app() -> FastAPI:
     app = FastAPI(title="SiteSnap Backend", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
+        # Static allowlist for known production origins.
         allow_origins=[
             "https://sitesnapbyecm.lovable.app",
             "https://sitesnap.app",
+            "https://emmersonmorales.com",
+            "https://sites.emmersonmorales.com",
             "http://localhost:5173",
+            "http://localhost:3000",
         ],
+        # Regex catches Lovable's preview origins (id-preview-xxx.lovable.app,
+        # *.lovableproject.com), plus any future *.emmersonmorales.com
+        # subdomain we point at this backend.
+        allow_origin_regex=(
+            r"^https://([a-z0-9-]+\.)*lovable\.app$"
+            r"|^https://([a-z0-9-]+\.)*lovableproject\.com$"
+            r"|^https://([a-z0-9-]+\.)*emmersonmorales\.com$"
+        ),
         allow_methods=["POST", "GET", "OPTIONS"],
         allow_headers=["content-type", "authorization"],
     )
